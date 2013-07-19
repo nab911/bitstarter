@@ -21,9 +21,11 @@ References:
    - https://developer.mozilla.org/en-US/docs/JSON#JSON_in_Firefox_2
 */
 
-var fs = require('fs');
-var program = require('commander');
-var cheerio = require('cheerio');
+var fs = require('fs'),
+	program = require('commander'),
+	cheerio = require('cheerio'),
+	request = require('request');
+	
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
 
@@ -37,22 +39,28 @@ var assertFileExists = function(infile) {
 };
 
 var cheerioHtmlFile = function(htmlfile) {
-    return cheerio.load(fs.readFileSync(htmlfile));
+    var file = fs.readFileSync(htmlfile);
+    return cheerio.load(file);
 };
 
 var loadChecks = function(checksfile) {
     return JSON.parse(fs.readFileSync(checksfile));
 };
 
-var checkHtmlFile = function(htmlfile, checksfile) {
-    $ = cheerioHtmlFile(htmlfile);
+var checkHtmlFile = function(htmlfile, checksfile, url) {
+    if(url)
+		$ = cheerio.load(htmlfile);
+	else
+		$ = cheerioHtmlFile(htmlfile);
     var checks = loadChecks(checksfile).sort();
     var out = {};
-    for(var ii in checks) {
-        var present = $(checks[ii]).length > 0;
-        out[checks[ii]] = present;
+    for(var i in checks) {
+        var present = $(checks[i]).length > 0;
+        out[checks[i]] = present;
     }
-    return out;
+    
+	outJson = JSON.stringify(out, null, 4);
+	console.log(outJson);
 };
 
 var clone = function(fn) {
@@ -65,11 +73,22 @@ if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
-        .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+        .option('-u, --url <url>', 'Url of index.html')
+	.parse(process.argv);
+	var checkJson;
+	var outJson;
+	if(program.url){
+		var url = program.url;
+		var filename = 'index.html';
+		var file;
+		request(url, function(error, response, body) {
+			checkHtmlFile(body, program.checks, true);
+		});
+	}
+	else {
+		checkHtmlFile(program.file, program.checks, false);
+	}
 } else {
-    exports.checkHtmlFile = checkHtmlFile;
+	exports.checkHtmlFile = checkHtmlFile;
 }
 

@@ -1,14 +1,24 @@
 var fs = require('fs'),
+	http = require('http'),
 	express = require('express');
 
-var index = fs.readFileSync('index.html');
-var app = express.createServer(express.logger());
+// HTTP Server Configuration
 
-app.get('/', function(request, response) {
-  response.send(index.toString());
+var app = express();
+
+app.configure(function(){
+	app.use(express.bodyParser());
+	app.use(app.router);
+	app.use(express.static(__dirname + '/public'));	
 });
 
-var port = process.env.PORT || 5000;
-app.listen(port, function() {
-  console.log("Listening on " + port);
+app.configure('development', function(){
+	app.use(express.errorHandler({ dumpExceptions: true, showStack: true }));
 });
+
+app.configure('production', function(){
+	app.use(express.errorHandler());
+});
+
+server = http.createServer(app);
+server.listen(5000);
